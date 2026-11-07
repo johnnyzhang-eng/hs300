@@ -108,13 +108,14 @@ def _combine_three(curves: tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame], roun
     target = target_map[dates[0]]
     sleeve_values = [1.0, 1.0, 1.0]
     portfolio = 1.0
+    month_start_value = portfolio
     rows = [{"date": dates[0], "value": portfolio}]
     weight_records = [{"date": dates[0], "weight_a": target[0], "weight_b": target[1], "weight_c": target[2]}]
     for index in range(1, len(dates)):
         day = dates[index]
         daily = [returns[key][index - 1] for key in ("a", "b", "c")]
         sleeve_values = [sleeve_values[i] * (1.0 + daily[i]) for i in range(3)]
-        portfolio *= 1.0 + sum(target[i] * daily[i] for i in range(3))
+        portfolio = month_start_value * sum(target[i] * sleeve_values[i] for i in range(3))
         next_month = index + 1 == len(dates) or (dates[index + 1].year, dates[index + 1].month) != (day.year, day.month)
         if next_month:
             gross = sum(target[i] * sleeve_values[i] for i in range(3))
@@ -122,6 +123,7 @@ def _combine_three(curves: tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame], roun
             next_target = target_map[dates[index + 1]] if index + 1 < len(dates) else target
             turnover = 0.5 * sum(abs(next_target[i] - actual[i]) for i in range(3))
             portfolio *= 1.0 - turnover * round_trip_cost
+            month_start_value = portfolio
             sleeve_values = [1.0, 1.0, 1.0]
             target = next_target
         rows.append({"date": day, "value": portfolio})
